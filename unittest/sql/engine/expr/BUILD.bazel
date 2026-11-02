@@ -1,0 +1,25 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("//bazel:defs.bzl", "cc_library")
+
+package(default_testonly = True)
+
+cc_library(
+    name = "ai_function_validation_cases",
+    srcs = ["test_ai_function_validation.cpp"],
+    alwayslink = True,
+    deps = [
+        "//src/sql:ai_function_test_api",
+        "//bazel/third_party:gtest",
+    ],
+)
+
+cc_test(
+    name = "ai_function_validation_test",
+    linkstatic = True,
+    deps = [
+        ":ai_function_validation_cases",
+        "//src/oblib:oblib_test_runtime",
+    ],
+    linkopts = ["-Wl,--gc-sections"],
+    target_compatible_with = ["@platforms//os:linux"],
+)

@@ -329,6 +329,11 @@ public:
                                  ObJsonObject *http_response,
                                  ObIJsonBase *&result);
   static int set_string_result(const ObExpr &expr, ObEvalCtx &ctx, ObDatum &res, ObString &res_str);
+  static int get_finite_number(const ObIJsonBase *node, double &value);
+  static int get_response_index(const ObIJsonBase *node, int64_t count, int64_t &index);
+  static int validate_embeddings(ObJsonArray *vectors, int64_t input_count, int64_t dimension);
+  static int validate_rerank(ObJsonArray *results, int64_t input_count);
+  static int validate_complete_config(ObJsonObject *config);
   static bool is_provider_support_base64(const ObString &provider);
   static int decode_base64_embedding_array(const ObIJsonBase &embedding_jbase, ObIAllocator &allocator,
                                            const int64_t dimension, float *&vector);
@@ -382,6 +387,8 @@ public:
   static constexpr char prompt_template_key[20] = "template";
   static constexpr char prompt_args_key[20] = "args";
 private:
+  static int render_prompt(ObIAllocator &allocator, ObJsonObject *prompt_object,
+                           ObString &result, int64_t depth);
   DISALLOW_COPY_AND_ASSIGN(ObAIFuncPromptObjectUtils);
 };
 

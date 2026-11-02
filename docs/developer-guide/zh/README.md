@@ -34,6 +34,7 @@
 1. [编写并运行单元测试](unittest.md) - 使用Google Test编写和运行单元测试
 2. [运行MySQL测试](mysqltest.md) - 运行mysqltest集成测试
 3. [调试](debug.md) - 使用GDB、日志等方式调试seekdb
+4. [赛题一：AI 函数增强操作指南](ai-function-enhancement.md) - WSL 构建路线、六个子题的实现步骤和验收方法
 
 ### 第四部分：核心系统设计
 

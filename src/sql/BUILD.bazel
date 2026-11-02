@@ -214,6 +214,20 @@ _SQL_RUNTIME_UNITY_GROUPS = groups_without(
     "sql_runtime_standalone",
 )
 
+cc_library(
+    name = "ai_function_test_api",
+    testonly = True,
+    srcs = ["engine/expr/ob_expr_ai/ob_ai_func_utils.cpp"],
+    hdrs = ["engine/expr/ob_expr_ai/ob_ai_func_utils.h"],
+    implementation_deps = ["//bazel/third_party:curl_headers"],
+    deps = [
+        ":sql_runtime_interface",
+        ":sql_runtime_internal_headers",
+        "//src/share:json_access",
+    ],
+    visibility = ["//unittest/sql/engine/expr:__pkg__"],
+)
+
 _SQL_RUNTIME_WITHOUT_PASS_UNITY_GROUPS = singleton_unity_groups(
     SQL_EXTRA_SOURCES,
     "sql_runtime_extra",
