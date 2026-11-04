@@ -1833,6 +1833,7 @@ int ObDMLResolver::resolve_basic_column_item(const TableItem &table_item,
                                              ObDMLStmt *stmt /* = NULL */)
 {
   int ret = OB_SUCCESS;
+  if (session_info_ != nullptr && session_info_->is_ai_column_internal_read()) { include_hidden = true; }
   ObColumnRefRawExpr *col_expr = NULL;
   ObSchemaGetterGuard *schema_guard = NULL;
   ColumnItem column_item;
@@ -1849,7 +1850,10 @@ int ObDMLResolver::resolve_basic_column_item(const TableItem &table_item,
                          && !table_item.is_fake_cte_table())) {
     ret = OB_ERR_UNEXPECTED;
   } else if (NULL != (col_item = stmt->get_column_item(table_item.table_id_, column_name))) {
-    if (!include_hidden) {
+    if (!include_hidden && col_item->expr_ != nullptr
+        && (col_item->expr_->get_column_flags() & AI_COLUMN_OUTBOX_FLAG) != 0) {
+      ret = OB_ERR_BAD_FIELD_ERROR;
+    } else if (!include_hidden) {
       if (!ObCharset::case_insensitive_equal(column_name, OB_HIDDEN_PK_INCREMENT_COLUMN_NAME)) {
         //do nothing
       } else if (current_scope_ == T_UPDATE_SCOPE || current_scope_ == T_INSERT_SCOPE) {
@@ -5678,6 +5682,12 @@ int ObDMLResolver::check_basic_column_generated(const ObColumnRefRawExpr *col_ex
   const ColumnItem *view_column_item = NULL;
   if (OB_ISNULL(col_expr) || OB_ISNULL(dml_stmt)) {
     ret = OB_ERR_UNEXPECTED;
+  } else if ((col_expr->get_column_flags() & AI_COLUMN_OUTBOX_FLAG) != 0
+      && (session_info_ == nullptr || !session_info_->is_ai_column_internal_write())) {
+    ret = OB_NOT_SUPPORTED;
+  } else if ((col_expr->get_column_flags() & AI_COLUMN_FLAG) != 0
+      && (session_info_ == nullptr || !session_info_->is_ai_column_internal_write())) {
+    is_generated = true;
   } else if (col_expr->is_generated_column()) {
     is_generated = true;
   } else if (OB_ISNULL(table_item = dml_stmt->get_table_item_by_id(col_expr->get_table_id()))) {
@@ -5704,7 +5714,9 @@ int ObDMLResolver::check_basic_column_generated(const ObColumnRefRawExpr *col_ex
       ret = OB_ERR_UNEXPECTED;
     } else if (OB_ISNULL(basic_column_item->expr_)) {
       ret = OB_ERR_UNEXPECTED;
-    } else if (basic_column_item->expr_->is_generated_column()) {
+    } else if (basic_column_item->expr_->is_generated_column()
+        || ((basic_column_item->expr_->get_column_flags() & (AI_COLUMN_FLAG | AI_COLUMN_OUTBOX_FLAG)) != 0
+            && (session_info_ == nullptr || !session_info_->is_ai_column_internal_write()))) {
       is_generated = true;
     }
   }

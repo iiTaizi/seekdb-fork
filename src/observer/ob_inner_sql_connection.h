@@ -281,7 +281,8 @@ private:
   // execute with retry
   int query(sqlclient::ObIExecutor &executor,
             ObInnerSQLResult &res,
-            ObVirtualTableIteratorFactory *vt_iter_factory = NULL);
+            ObVirtualTableIteratorFactory *vt_iter_factory = NULL,
+            bool prefetch_first_row = true);
   int do_query(sqlclient::ObIExecutor &executor, ObInnerSQLResult &res);
 
   // set timeout to session variable

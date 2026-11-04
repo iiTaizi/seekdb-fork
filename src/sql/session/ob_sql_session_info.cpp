@@ -244,6 +244,8 @@ int ObSQLSessionInfo::test_init(uint32_t version, uint32_t sessid,
 
 void ObSQLSessionInfo::reset(bool skip_sys_var)
 {
+  ai_column_internal_write_ = false;
+  ai_column_internal_read_ = false;
   if (is_inited_) {
     // ObVersionProvider::reset();
     warnings_buf_.reset();
@@ -1489,6 +1491,9 @@ int ObSQLSessionInfo::save_sql_session(StmtSavedValue &saved_value)
   OX (saved_value.audit_record_.assign(audit_record_));
   OX (audit_record_.reset());
   OX (saved_value.inner_flag_ = inner_flag_);
+  OX (saved_value.ai_column_internal_write_ = ai_column_internal_write_);
+  OX (saved_value.ai_column_internal_read_ = ai_column_internal_read_);
+  OX (ai_column_internal_write_ = ai_column_internal_read_ = false);
   OX (saved_value.session_type_ = session_type_);
   OX (saved_value.read_uncommited_ = read_uncommited_);
   OX (saved_value.is_ignore_stmt_ = is_ignore_stmt_);
@@ -1503,6 +1508,8 @@ int ObSQLSessionInfo::restore_sql_session(StmtSavedValue &saved_value)
   int ret = OB_SUCCESS;
   OX (session_type_ = saved_value.session_type_);
   OX (inner_flag_ = saved_value.inner_flag_);
+  OX (ai_column_internal_write_ = saved_value.ai_column_internal_write_);
+  OX (ai_column_internal_read_ = saved_value.ai_column_internal_read_);
   OX (read_uncommited_ = saved_value.read_uncommited_);
   OX (is_ignore_stmt_ = saved_value.is_ignore_stmt_);
   OX (audit_record_.assign(saved_value.audit_record_));

@@ -133,7 +133,9 @@ int ObUpdateResolver::resolve(const ParseNode &parse_tree)
     if (OB_FAIL(try_add_remove_const_expr_for_assignments())) {
     } else if (OB_FAIL(resolve_update_constraints())) {
     } else if (OB_FAIL(resolve_hints(parse_tree.children_[HINT]))) {
-    } else if (OB_FAIL(resolve_where_clause(parse_tree.children_[WHERE]))) {
+    } else if (OB_FAIL(parse_tree.num_child_ == 11 && parse_tree.children_[10] != nullptr
+        && parse_tree.children_[10]->type_ == T_DEFAULT ? resolve_ai_column_retry_where(parse_tree)
+        : resolve_where_clause(parse_tree.children_[WHERE]))) {
     } else if (params_.is_batch_stmt_ && OB_FAIL(generate_batched_stmt_info())) {
     } else if (OB_FAIL(resolve_order_clause(parse_tree.children_[ORDER_BY]))) {
     } else if (OB_FAIL(resolve_limit_clause(parse_tree.children_[LIMIT], true))) {

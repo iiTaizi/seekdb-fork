@@ -81,6 +81,9 @@ int ObDMLService::check_row_null(const ObExprPtrIArray &row,
     ObDatum *datum = NULL;
     const bool is_nullable = column_infos.at(i).is_nullable_;
     uint64_t col_idx = column_infos.at(i).projector_index_;
+    // Internal task state is checked after the native heap key is allocated.
+    // Its producer and the final DAS write gate reject a NULL result.
+    if (row.at(col_idx)->type_ == T_FUN_SYS_AI_COLUMN_CAPTURE && is_nullable) { continue; }
     if (OB_FAIL(row.at(col_idx)->eval(eval_ctx, datum))) {
       common::ObString column_name = column_infos.at(i).column_name_;
       ret = ObDMLService::log_user_error_inner(ret, row_num, column_name, dml_op.get_exec_ctx(),
@@ -183,6 +186,7 @@ int ObDMLService::check_column_type(const ExprFixedArray &dml_row,
     dml_op.get_exec_ctx().set_cur_column_name(&column_name);
     ObExpr *expr = dml_row.at(column_info.projector_index_);
     ObDatum *datum = nullptr;
+    if (expr->type_ == T_FUN_SYS_AI_COLUMN_CAPTURE) { continue; }
     if (OB_FAIL(expr->eval(dml_op.get_eval_ctx(), datum))) {
       ret = ObDMLService::log_user_error_inner(ret, row_num, column_name, dml_op.get_exec_ctx(),
                                                expr->datum_meta_.type_);
@@ -577,6 +581,19 @@ int ObDMLService::filter_row_for_view_check(const ExprFixedArray &cst_exprs,
   return ret;
 }
 
+int ObDMLService::eval_ai_column_captures(const ObExprPtrIArray &row, ObEvalCtx &eval_ctx)
+{
+  int ret = OB_SUCCESS;
+  for (int64_t i = 0; OB_SUCC(ret) && i < row.count(); ++i) {
+    ObExpr *expr = row.at(i); ObDatum *datum = nullptr;
+    if (expr != nullptr && expr->type_ == T_FUN_SYS_AI_COLUMN_CAPTURE) {
+      if (OB_FAIL(expr->eval(eval_ctx, datum))) {}
+      else if (datum == nullptr || datum->is_null()) { ret = OB_ERR_UNEXPECTED; }
+    }
+  }
+  return ret;
+}
+
 int ObDMLService::init_heap_table_pk_for_ins(const ObInsCtDef &ins_ctdef, ObEvalCtx &eval_ctx)
 {
   int ret = OB_SUCCESS;
@@ -793,6 +810,7 @@ int ObDMLService::process_update_row(const ObUpdCtDef &upd_ctdef,
           dml_op, upd_ctdef.das_base_ctdef_, upd_ctdef.trig_ctdef_, upd_rtdef.trig_rtdef_))) {
       }
       if (OB_FAIL(ret)) {
+      } else if (OB_FAIL(eval_ai_column_captures(upd_ctdef.new_row_, dml_op.get_eval_ctx()))) {
       } else if (OB_FAIL(check_row_null(upd_ctdef.new_row_,
                                         dml_op.get_eval_ctx(),
                                         upd_rtdef.cur_row_num_,
@@ -1758,6 +1776,9 @@ int ObDMLService::write_row_to_das_op(const ObDASDMLBaseCtDef &ctdef,
   }
 
   // 2. add row to das dml buffer
+  if (OB_SUCC(ret) && (N == DAS_OP_TABLE_INSERT || N == DAS_OP_TABLE_UPDATE)) {
+    ret = eval_ai_column_captures(row, dml_rtctx.get_eval_ctx());
+  }
   if (OB_FAIL(ret)) {
     // do nothing
   } else if (OB_FAIL(dml_op->write_row(row, dml_rtctx.get_eval_ctx(), stored_row))) {
@@ -1848,6 +1869,10 @@ int ObDMLService::set_update_hidden_pk(ObEvalCtx &eval_ctx,
       ObDatum &datum = auto_inc_expr->locate_datum_for_write(eval_ctx);
       datum.set_uint(autoinc_seq);
       auto_inc_expr->get_eval_info(eval_ctx).evaluated_ = true;
+      for (int64_t i = 0; i < upd_ctdef.new_row_.count(); ++i) {
+        ObExpr *expr = upd_ctdef.new_row_.at(i);
+        if (expr != nullptr && expr->type_ == T_FUN_SYS_AI_COLUMN_CAPTURE) { expr->clear_evaluated_flag(eval_ctx); }
+      }
     }
   }
   return ret;

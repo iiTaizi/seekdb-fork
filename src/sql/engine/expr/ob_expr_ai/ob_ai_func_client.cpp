@@ -16,6 +16,7 @@
 
 #define USING_LOG_PREFIX SQL_ENG
 #include "ob_ai_func_client.h"
+#include "sql/session/ob_sql_session_info.h"
 #include <limits>
 
 namespace oceanbase 
@@ -32,6 +33,8 @@ ObAIFuncClient::ObAIFuncClient()
   abs_timeout_ts_ = 0;
   batch_error_ = OB_SUCCESS;
   max_retry_times_ = 3;  // default retry 3 times
+  single_attempt_ = THIS_WORKER.get_session() != nullptr
+      && THIS_WORKER.get_session()->is_ai_column_internal_write();
   timeout_sec_ = 60; // default timeout 1 minute
 }
 
@@ -202,7 +205,8 @@ int ObAIFuncClient::send_post(ObJsonObject *data, ObJsonObject *&response)
     if (OB_FAIL(init_easy_handle(curl_, data, response_buf))) {
     } 
     // retry if need
-    for (int64_t i = 0; OB_SUCC(ret) && i <= max_retry_times_; ++i) {
+    const int64_t retry_limit = single_attempt_ ? 0 : max_retry_times_;
+    for (int64_t i = 0; OB_SUCC(ret) && i <= retry_limit; ++i) {
       http_code = 0;
       if (CURLE_OK != (res = curl_easy_perform(curl_))) {
         LOG_WARN("perform curl failed", K(res));
@@ -217,6 +221,7 @@ int ObAIFuncClient::send_post(ObJsonObject *data, ObJsonObject *&response)
         break;
       } else {
         LOG_WARN("retryable http status code", K(http_code), K(i));
+        if (i == retry_limit) { break; }
         int64_t delay_ms = 1000 * (1 << i) + rand() % 1000;
         ob_usleep(delay_ms * 1000);
         response_buf.reset();
@@ -367,11 +372,12 @@ int ObAIFuncClient::send_post_batch(common::ObIAllocator &allocator,
     if (OB_FAIL(init(allocator, url, headers))) {
     }
     // retry if need
-    for (int64_t i = 0; OB_SUCC(ret) && i < max_retry_times_; ++i) {
+    const int64_t attempt_limit = single_attempt_ ? 1 : max_retry_times_;
+    for (int64_t i = 0; OB_SUCC(ret) && i < attempt_limit; ++i) {
       ret = send_post_batch(data_array, responses);
       if (is_timeout()) {
         ret = OB_TIMEOUT;
-      } else if (OB_CURL_ERROR == ret && i + 1 < max_retry_times_) {
+      } else if (OB_CURL_ERROR == ret && i + 1 < attempt_limit) {
         responses.reset();
         ret = OB_SUCCESS;
         int64_t delay_ms = 1000 * (1 << i) + rand() % 1000;

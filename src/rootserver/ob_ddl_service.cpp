@@ -38,6 +38,7 @@
 #include "share/ob_global_stat_proxy.h"
 #include "rootserver/fork_table/ob_fork_table_util.h"
 #include "sql/resolver/ddl/ob_ddl_resolver.h"
+#include "sql/engine/ai_column/ai_column_sql.h"
 #include "sql/resolver/expr/ob_raw_expr_modify_column_name.h"
 #include "rootserver/ob_ddl_service_launcher.h" // for ObDDLServiceLauncher
 #include "rootserver/ddl_task/ob_sys_ddl_util.h" // ObSysDDLSchedulerUtil
@@ -7455,7 +7456,8 @@ int ObDDLService::fill_new_column_attributes(
     new_column_schema.set_srs_id(alter_column_schema.get_srs_id());
     new_column_schema.set_skip_index_attr(alter_column_schema.get_skip_index_attr().get_packed_value());
     new_column_schema.set_lob_chunk_size(alter_column_schema.get_lob_chunk_size());
-    if (OB_FAIL(new_column_schema.get_local_session_var().deep_copy(alter_column_schema.get_local_session_var()))) {
+    if (OB_FAIL(new_column_schema.set_ai_column_info(alter_column_schema.get_ai_column_info()))) {
+    } else if (OB_FAIL(new_column_schema.get_local_session_var().deep_copy(alter_column_schema.get_local_session_var()))) {
     }
   }
   return ret;
@@ -8242,6 +8244,14 @@ int ObDDLService::alter_table_column(const ObTableSchema &origin_table_schema,
   const common::ObTimeZoneInfoWrap &tz_info_wrap = alter_table_arg.tz_info_wrap_;
   common::ObIAllocator &allocator = alter_table_arg.allocator_;
 
+  ObSEArray<sql::AiColumnSchemaChange, 4> ai_changes;
+  bool has_ai_schema = false;
+  for (auto it = origin_table_schema.column_begin(); it != origin_table_schema.column_end(); ++it) {
+    has_ai_schema |= (*it)->is_ai_column();
+  }
+  for (auto it = alter_table_schema.column_begin(); it != alter_table_schema.column_end(); ++it) {
+    has_ai_schema |= (*it)->is_ai_column();
+  }
   bool for_view = false;
   const bool need_del_stats = false;
   LOG_INFO("check before alter table column", K(origin_table_schema),
@@ -8259,6 +8269,7 @@ int ObDDLService::alter_table_column(const ObTableSchema &origin_table_schema,
   } else if (OB_FAIL(get_all_dropped_column_ids(alter_table_arg, origin_table_schema,
       drop_cols_id_arr, &new_tbl_visible_cols_cnt_after_alter/*final columns count of new table*/, &last_drop_column_id))) {
   } else if (OB_FAIL(origin_table_schema.get_unused_column_ids(unused_column_ids))) {
+  } else if (has_ai_schema && OB_FAIL(lock_table(trans, origin_table_schema))) {
   } else {
     AlterColumnSchema *alter_column_schema;
     ObTableSchema::const_column_iterator it_begin = alter_table_schema.column_begin();
@@ -8581,6 +8592,19 @@ int ObDDLService::alter_table_column(const ObTableSchema &origin_table_schema,
           }
         }
 
+        if (OB_SUCC(ret) && alter_column_schema->alter_type_ == OB_DDL_DROP_COLUMN) {
+          const auto *old_ai = origin_table_schema.get_column_schema(orig_column_name);
+          if (old_ai != nullptr && old_ai->is_ai_column()) {
+            sql::AiColumnSchemaChange change; change.column_id_ = old_ai->get_column_id();
+            ret = ai_changes.push_back(change);
+          }
+        } else if (OB_SUCC(ret) && new_column_schema.is_ai_column()
+            && origin_table_schema.get_column_schema(new_column_schema.get_column_id()) != nullptr) {
+          // update_single_column has assigned the actual persisted column version
+          // to this object; the table copy may still carry its earlier version.
+          ret = sql::AiColumnSql::append_schema_change(new_column_schema, ai_changes);
+        }
+
         if (OB_SUCC(ret) && is_all_column_exactly_same_type && OB_NOT_NULL(orig_column_schema)) {
           if (OB_FAIL(ObTableSchema::check_is_exactly_same_type(*orig_column_schema, new_column_schema, is_all_column_exactly_same_type))) {
           }
@@ -8603,6 +8627,20 @@ int ObDDLService::alter_table_column(const ObTableSchema &origin_table_schema,
       if (OB_FAIL(ObDDLLock::lock_for_common_ddl_in_trans(new_table_schema, require_strict_binary_format, trans))) {
       }
     }
+  }
+
+  if (OB_SUCC(ret) && has_ai_schema) {
+    ret = sql::AiColumnSql::validate_schema_change(origin_table_schema, new_table_schema);
+  }
+  if (OB_SUCC(ret) && !ai_changes.empty()) {
+    const ObDatabaseSchema *database = nullptr;
+    auto *connection = trans.get_connection();
+    auto *session = connection == nullptr ? nullptr : query::ObInnerSQLConnectionAccess::get_session(connection);
+    if (session == nullptr) { ret = OB_ERR_UNEXPECTED; }
+    else if (OB_FAIL(schema_guard.get_database_schema(origin_table_schema.get_database_id(), database))) {}
+    else if (database == nullptr) { ret = OB_TABLE_NOT_EXIST; }
+    else { ret = sql::AiColumnSql::fence_schema(*connection, *session, origin_table_schema,
+        database->get_database_name_str(), ai_changes); }
   }
 
   return ret;

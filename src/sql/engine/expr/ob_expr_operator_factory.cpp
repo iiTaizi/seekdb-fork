@@ -415,6 +415,8 @@
 #include "sql/engine/expr/ob_expr_map_keys.h"
 #include "sql/engine/expr/ob_expr_semantic_distance.h"
 #include "sql/engine/expr/ob_expr_ai/ob_expr_ai_complete.h"
+#include "sql/engine/ai_column/ai_column_capture_expr.h"
+#include "sql/engine/ai_column/ai_column_status_expr.h"
 #include "sql/engine/expr/ob_expr_ai/ob_expr_ai_embed.h"
 #include "sql/engine/expr/ob_expr_ai/ob_expr_ai_rerank.h"
 #include "sql/engine/expr/ob_expr_ai/ob_expr_ai_prompt.h"
@@ -1048,6 +1050,8 @@ void ObExprOperatorFactory::register_expr_operators()
     REG_OP(ObExprAIEmbed);
     REG_OP(ObExprAIRerank);
     REG_OP(ObExprAIPrompt);
+    REG_OP(AiColumnCaptureExpr);
+    REG_OP(AiColumnStatusExpr);
   }();
 }
 

@@ -713,7 +713,8 @@ int ObInnerSQLConnection::do_query(sqlclient::ObIExecutor &executor, ObInnerSQLR
 
 int ObInnerSQLConnection::query(sqlclient::ObIExecutor &executor,
                                 ObInnerSQLResult &res,
-                                ObVirtualTableIteratorFactory *vt_iter_factory)
+                                ObVirtualTableIteratorFactory *vt_iter_factory,
+                                bool prefetch_first_row)
 {
   int ret = OB_SUCCESS;
   ObExecRecord exec_record;
@@ -767,7 +768,7 @@ int ObInnerSQLConnection::query(sqlclient::ObIExecutor &executor,
       for (int64_t retry_cnt = 0; need_retry; ++retry_cnt) {
         need_retry = false;
         retry_info.clear_state_before_each_retry();
-        res.set_is_read(true);
+        res.set_is_read(prefetch_first_row);
         if (retry_cnt > 0) { // reset result set
           bool is_user_sql = res.result_set().is_user_sql();
           res.~ObInnerSQLResult();
@@ -777,7 +778,7 @@ int ObInnerSQLConnection::query(sqlclient::ObIExecutor &executor,
           if (OB_FAIL(res.init())) {
           } else {
             res.result_set().set_user_sql(is_user_sql);
-            res.set_is_read(true);
+            res.set_is_read(prefetch_first_row);
           }
         }
         get_session().get_raw_audit_record().request_memory_used_ = 0;
@@ -1167,7 +1168,7 @@ int ObInnerSQLConnection::execute(
     if (OB_FAIL(res.init())) {
     } else if (!inited_) {
       ret = OB_NOT_INIT;
-    } else if (OB_FAIL(query(executor, res))) {
+    } else if (OB_FAIL(query(executor, res, nullptr, false))) {
     } else {
       SERVER_MODULE_SCOPE {
         WITH_CONTEXT(res.mem_context_) {

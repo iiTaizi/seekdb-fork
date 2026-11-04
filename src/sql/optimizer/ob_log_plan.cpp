@@ -17,6 +17,7 @@
 #define USING_LOG_PREFIX SQL_OPT
 #include "config_bridge.h"
 #include "ob_log_plan.h"
+#include "sql/engine/ai_column/ai_column_strict_read.h"
 #include "sql/optimizer/ob_pwj_comparer.h"
 #include "sql/optimizer/stat/ob_opt_stat_manager.h"
 #include "sql/optimizer/ob_log_table_scan.h"
@@ -9252,6 +9253,7 @@ int ObLogPlan::generate_plan()
   } else if (OB_FAIL(generate_raw_plan())) {
   } else if (stmt->is_explain_stmt()) {
     /*do nothing*/
+  } else if (OB_FAIL(AiColumnStrictRead::wrap(*this))) {
   } else if (OB_FAIL(do_post_plan_processing())) {
   } else if (OB_FAIL(plan_traverse_loop(PX_RESCAN,
                                         RUNTIME_FILTER,

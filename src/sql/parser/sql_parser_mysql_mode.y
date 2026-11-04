@@ -334,7 +334,7 @@ END_P SET_VAR DELIMITER
         QUANTIFIER_TABLE QUARTER QUERY QUEUE_TIME QUICK
 
         RECOVER REDUNDANT REFRESH RELAY RELAYLOG RELAY_LOG_FILE RELAY_LOG_POS RELAY_THREAD RELOAD REMOVE
-        REPEATABLE RESET RESPECT RESTART RESTORE RESUME RETURNED_SQLSTATE RETURNS RETURNING REVERSE
+        REPEATABLE RESET RESPECT RESTART RETRY RESTORE RESUME RETURNED_SQLSTATE RETURNS RETURNING REVERSE
         REWRITE ROLLBACK ROLLUP ROUTINE ROW ROWID ROW_COUNT ROW_FORMAT ROWS RTREE
         RUN RECYCLEBIN REPLICATION ROTATE ROW_NUMBER RUDUNDANT RECURSIVE RANDOM REDO_TRANSPORT_OPTIONS
         RANK READ_ONLY RECOVERY REJECT ROLE
@@ -422,6 +422,7 @@ END_P SET_VAR DELIMITER
 %type <node> opt_equal_mark opt_default_mark read_only_or_write not not2
 %type <node> int_or_decimal
 %type <node> opt_column_attribute_list column_attribute column_attribute_list opt_column_default_value opt_column_default_value_list
+%type <node> opt_ai_column_options
 %type <node> show_stmt from_or_in columns_or_fields database_or_schema index_or_indexes_or_keys opt_from_or_in_database_clause opt_show_condition opt_desc_column_option opt_status opt_storage opt_show_engine check_table_options check_table_option
 %type <node> prepare_stmt stmt_name preparable_stmt
 %type <node> variable_set_stmt var_and_val_list var_and_val to_or_eq set_expr_or_default sys_var_and_val
@@ -590,7 +591,12 @@ stmt:
   | prepare_stmt            { $$ = $1; question_mark_issue($$, result); }
   | variable_set_stmt       { $$ = $1; question_mark_issue($$, result); }
   | execute_stmt            { $$ = $1; check_question_mark($$, result); }
-  | alter_table_stmt        { $$ = $1; check_question_mark($$, result); }
+  | alter_table_stmt
+  {
+    $$ = $1;
+    if ($$->type_ == T_UPDATE) { question_mark_issue($$, result); }
+    else { check_question_mark($$, result); }
+  }
   | alter_system_stmt       { $$ = $1; check_question_mark($$, result); }
   | deallocate_prepare_stmt { $$ = $1; check_question_mark($$, result); }
   | create_user_stmt        { $$ = $1; check_question_mark($$, result); }
@@ -4841,6 +4847,13 @@ column_definition_ref data_type opt_column_attribute_list opt_column_reference o
   set_data_type_collation($2, attributes, false, true);
   malloc_non_terminal_node($$, result->malloc_pool_, T_COLUMN_DEFINITION, 4, $1, $2, attributes, $5);
 }
+| column_definition_ref data_type opt_collation AI COLUMN '(' expr ')' opt_ai_column_options opt_position_column
+{
+  set_data_type_collation($2, $3, true, false);
+  dup_expr_string($7, result, @7.first_column, @7.last_column);
+  $7->is_tree_not_param_ = true;
+  malloc_non_terminal_node($$, result->malloc_pool_, T_COLUMN_DEFINITION, 6, $1, $2, NULL, $10, $7, $9);
+}
 | column_definition_ref data_type opt_collation opt_generated_keyname AS '(' expr ')' opt_storage_type opt_generated_column_attribute_list opt_column_reference opt_position_column
 {
   (void)($11);
@@ -4908,6 +4921,18 @@ CONSTRAINT opt_constraint_name CHECK '(' expr ')' check_state
   malloc_terminal_node($$, result->malloc_pool_, T_ENFORCED_CONSTRAINT);
   malloc_non_terminal_node($$, result->malloc_pool_, T_CHECK_CONSTRAINT, 3, NULL, $3, $$);
   $$->value_ = 1;
+}
+;
+
+opt_ai_column_options:
+WITH '(' expr_list ')'
+{
+  $$ = $3;
+  $$->is_tree_not_param_ = true;
+}
+| /*empty*/
+{
+  $$ = NULL;
 }
 ;
 
@@ -12647,6 +12672,13 @@ SHOW opt_extended_or_full TABLES opt_from_or_in_database_clause opt_show_conditi
   $$->value_ = $2[0];
   malloc_non_terminal_node($$, result->malloc_pool_, T_SHOW_COLUMNS, 4, $$, $5, $6, $7);
 }
+| SHOW AI COLUMNS from_or_in relation_factor opt_from_or_in_database_clause opt_show_condition
+{
+  (void)($4);
+  malloc_terminal_node($$, result->malloc_pool_, T_INT);
+  $$->value_ = 4;
+  malloc_non_terminal_node($$, result->malloc_pool_, T_SHOW_COLUMNS, 4, $$, $5, $6, $7);
+}
 | SHOW TABLE STATUS opt_from_or_in_database_clause opt_show_condition
 { malloc_non_terminal_node($$, result->malloc_pool_, T_SHOW_TABLE_STATUS, 2, $4, $5); }
 | SHOW PROCEDURE STATUS opt_from_or_in_database_clause opt_show_condition
@@ -14661,6 +14693,27 @@ alter_with_opt_hint TABLE relation_factor alter_table_actions
   malloc_non_terminal_node($$, result->malloc_pool_, T_ALTER_TABLE, 4, $3, table_actions, NULL, $1);
   $$->value_ = 0;
 }
+| alter_with_opt_hint TABLE relation_factor RETRY AI COLUMN column_name opt_where
+{
+  ParseNode *table = NULL;
+  ParseNode *from_list = NULL;
+  ParseNode *column = NULL;
+  ParseNode *default_value = NULL;
+  ParseNode *assignment = NULL;
+  ParseNode *assign_list = NULL;
+  ParseNode *retry_marker = NULL;
+  malloc_non_terminal_node(table, result->malloc_pool_, T_ORG, 4, $3, NULL, NULL, NULL);
+  malloc_non_terminal_node(from_list, result->malloc_pool_, T_TABLE_REFERENCES, 1, table);
+  malloc_non_terminal_node(column, result->malloc_pool_, T_COLUMN_REF, 3, NULL, NULL, $7);
+  malloc_terminal_node(default_value, result->malloc_pool_, T_DEFAULT);
+  malloc_non_terminal_node(assignment, result->malloc_pool_, T_ASSIGN_ITEM, 2, column, default_value);
+  malloc_non_terminal_node(assign_list, result->malloc_pool_, T_ASSIGN_LIST, 1, assignment);
+  malloc_terminal_node(retry_marker, result->malloc_pool_, T_DEFAULT);
+  /* MySQL UPDATE slot 10 is reserved; value_ belongs to question-mark counting. */
+  malloc_non_terminal_node($$, result->malloc_pool_, T_UPDATE, 11,
+      NULL, from_list, assign_list, $8, NULL, NULL, NULL, $1, NULL, NULL, retry_marker);
+}
+
 ;
 
 
@@ -17958,6 +18011,7 @@ ACCOUNT
 |       RESET
 |       RESPECT
 |       RESTART
+|       RETRY
 |       RESTORE
 |       RESUME
 |       RETURNED_SQLSTATE

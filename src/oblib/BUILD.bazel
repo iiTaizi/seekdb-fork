@@ -1275,5 +1275,6 @@ cc_library(
     visibility = [
         "//unittest/oblib:__pkg__",
         "//unittest/sql/engine/expr:__pkg__",
+        "//unittest/share/ai_column:__pkg__",
     ],
 )

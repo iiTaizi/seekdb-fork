@@ -77,6 +77,7 @@ public:
                                       bool &filtered);
   static int init_heap_table_pk_for_ins(const ObInsCtDef &ins_ctdef,
                                         ObEvalCtx &eval_ctx);
+  static int eval_ai_column_captures(const ObExprPtrIArray &row, ObEvalCtx &eval_ctx);
   static int process_insert_row(const ObInsCtDef &ins_ctdef,
                                 ObInsRtDef &ins_rtdef,
                                 ObTableModifyOp &dml_op,

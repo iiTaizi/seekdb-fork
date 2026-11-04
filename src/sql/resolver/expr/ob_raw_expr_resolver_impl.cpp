@@ -6421,6 +6421,10 @@ int ObRawExprResolverImpl::check_internal_function(const ObString &name)
             || ctx_.is_in_system_view_
             || ctx_.is_from_show_resolver_) {
     // ignore
+  } else if (ctx_.session_info_->is_ai_column_internal_read()
+      && name.case_compare("__ai_column_status") == 0) {
+    // Only a generated condition/native worker scope can enable this flag.
+    // Do not grant the broader inner-session privileges to a user statement.
   } else if (FALSE_IT(ObExprOperatorFactory::get_internal_info_by_name(name, exist, is_internal))) {
   } else if (exist && is_internal) {
     ret = OB_ERR_SP_DOES_NOT_EXIST;

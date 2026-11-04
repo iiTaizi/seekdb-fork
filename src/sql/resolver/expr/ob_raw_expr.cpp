@@ -900,6 +900,7 @@ int ObRawExpr::is_const_inherit_expr(bool &is_const_inherit,
       || T_FUN_SYS_GENERATOR == type_
       || T_FUN_SYS_UUID == type_
       || T_FUN_SYS_UUID_SHORT == type_
+      || T_FUN_SYS_AI_COLUMN_CAPTURE == type_
       || T_FUN_SYS_AUTOINC_NEXTVAL == type_
       || T_FUN_SYS_DOC_ID == type_
       || T_FUN_SYS_VEC_VID == type_
@@ -988,6 +989,7 @@ int ObRawExpr::is_non_pure_sys_func_expr(bool &is_non_pure) const
         || T_FUN_SYS_RANDOM == type_
         || T_FUN_SYS_UUID == type_
         || T_FUN_SYS_UUID_SHORT == type_
+        || T_FUN_SYS_AI_COLUMN_CAPTURE == type_
         || T_FUN_SYS_SLEEP == type_
         || T_FUN_SYS_LAST_INSERT_ID == type_
         || T_FUN_SYS_ROW_COUNT == type_

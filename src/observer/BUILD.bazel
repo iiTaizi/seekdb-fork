@@ -29,6 +29,7 @@ _OBSERVER_GENERATED_SOURCE_REPLACEMENTS = {
 
 
 _OBSERVER_NATIVE_DEPS = [
+    "//src/share:ai_column_state",
     "//rust:sql_nio_headers",
     "//src/oblib/easy:easy",
     "//src/oblib:common_sql_mode",
@@ -142,6 +143,7 @@ _OBSERVER_NATIVE_DEPS = [
     "//src/share:vector",
     "//src/share:worker_runtime",
     "//src/sql:sql_runtime_interface",
+    "//src/sql:sql_ai_column_interface",
     "//src/storage:_textual_ob_keybtree",
     "//src/storage:data_validation_service_internal",
     "//src/storage:io_bench_controller_adapter",
@@ -166,6 +168,7 @@ _OBSERVER_NATIVE_DEPS = [
 ]
 
 _OBSERVER_RUNTIME_ONLY_SHARE_DEPS = [
+    "//src/share:ai_column_state",
     "//src/share:checksum_persistence",
     "//src/share:cluster_metadata_persistence",
     "//src/share:collection_types",

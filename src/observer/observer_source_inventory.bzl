@@ -367,4 +367,5 @@ OBSERVER_RETRIEVAL_COMPOSITION_SOURCES = [
 OBSERVER_STANDALONE_SOURCES = [
     "src/observer/ob_server.cpp",
     "src/observer/ob_service.cpp",
+    "src/observer/ai_service/ai_column_worker.cpp",
 ]

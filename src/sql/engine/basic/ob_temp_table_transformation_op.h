@@ -37,9 +37,10 @@ public:
   OB_UNIS_VERSION_V(1);
 public:
   ObTempTableTransformationOpSpec(common::ObIAllocator &alloc, const ObPhyOperatorType type)
-    : ObOpSpec(alloc, type) {}
+    : ObOpSpec(alloc, type), ai_column_strict_read_(false) {}
   virtual ~ObTempTableTransformationOpSpec() {}
   DECLARE_VIRTUAL_TO_STRING;
+  bool ai_column_strict_read_;
 };
 
 class ObTempTableTransformationOp : public ObOperator
@@ -48,7 +49,10 @@ public:
   ObTempTableTransformationOp(ObExecContext &exec_ctx, const ObOpSpec &spec, ObOpInput *input)
     : ObOperator(exec_ctx, spec, input), init_temp_table_(true) {}
   ~ObTempTableTransformationOp() {}
+  OperatorOpenOrder get_operator_open_order() const override;
+  int rescan() override;
   virtual int inner_open() override;
+  int drain_ai_controls();
   virtual int inner_rescan() override;
   virtual int inner_get_next_row() override;
   virtual int inner_get_next_batch(const int64_t max_row_cnt) override;
@@ -58,6 +62,7 @@ public:
   int destory_local_interm_results(ObIArray<uint64_t> &result_ids);
 
   bool init_temp_table_;
+  int64_t ai_opened_children_ = 0;
 };
 
 } // end namespace sql

@@ -17,6 +17,7 @@
 #define USING_LOG_PREFIX SQL
 #include "config_bridge.h"
 #include "sql/ob_sql.h"
+#include "sql/engine/ai_column/ai_column_strict_read.h"
 #include "lib/json/ob_json_print_utils.h"
 #include "lib/stat/ob_diagnostic_info_guard.h"
 #include "query/runtime/ob_query_runtime_environment.h"
@@ -2143,6 +2144,9 @@ int ObSql::generate_stmt(ParseResult &parse_result,
         ret = resolver.resolve(ObResolver::IS_NOT_PREPARED_STMT, *parse_result.result_tree_->children_[0], stmt);
       }
 
+      if (OB_SUCC(ret) && stmt != nullptr && stmt->is_dml_stmt()) {
+        ret = AiColumnStrictRead::prepare(*static_cast<ObDMLStmt *>(stmt), resolver_ctx);
+      }
       // set const param constraint after resolving
       context.all_plan_const_param_constraints_ = &(resolver_ctx.query_ctx_->all_plan_const_param_constraints_);
       context.all_possible_const_param_constraints_ = &(resolver_ctx.query_ctx_->all_possible_const_param_constraints_);

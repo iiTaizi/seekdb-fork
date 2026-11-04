@@ -222,6 +222,7 @@ public:
       audit_record_.reset();
       session_type_ = INVALID_TYPE;
       inner_flag_ = false;
+      ai_column_internal_write_ = ai_column_internal_read_ = false;
       is_ignore_stmt_ = false;
       db_id_ = OB_INVALID_ID;
       db_name_.reset();
@@ -230,6 +231,8 @@ public:
     ObAuditRecordData audit_record_;
     SessionType session_type_;
     bool inner_flag_;
+    bool ai_column_internal_write_;
+    bool ai_column_internal_read_;
     bool is_ignore_stmt_;
     uint64_t db_id_;
     common::ObSqlString db_name_;
@@ -611,6 +614,8 @@ public:
     inner_flag_ = true;
     session_type_ = INNER_SESSION;
   }
+  bool is_ai_column_internal_write() const { return ai_column_internal_write_; }
+  bool is_ai_column_internal_read() const { return ai_column_internal_read_; }
   inline void set_user_session()
   {
     inner_flag_ = false;
@@ -909,6 +914,9 @@ private:
   // in_transaction_ has been merged into trans_flags_.
 //  int64_t has_write_stmt_in_trans_;
   bool inner_flag_; // whether it is a virtual session for an internal request
+  friend class AiColumnInternalWriteGuard;
+  bool ai_column_internal_write_ = false;
+  bool ai_column_internal_read_ = false;
   // After version 2.2, this variable is no longer used
   bool is_max_availability_mode_;
   typedef common::hash::ObHashMap<ObPsStmtId, ObPsSessionInfo *,

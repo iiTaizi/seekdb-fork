@@ -396,7 +396,19 @@ int ObCreateTableResolver::resolve(const ParseNode &parse_tree)
                                create_table_stmt->get_create_table_arg().schema_))) {
       }
     }
-
+    if (OB_SUCC(ret)) {
+      ObTableSchema &table = create_table_stmt->get_create_table_arg().schema_; bool has_ai = false;
+      if (OB_FAIL(resolve_ai_columns(table, has_ai))) {}
+      else if (has_ai && (is_create_as_sel || table.is_tmp_table())) {
+        ret = OB_NOT_SUPPORTED; LOG_USER_ERROR(OB_NOT_SUPPORTED, "AI columns in temporary tables or CREATE AS SELECT");
+      } else if (has_ai) {
+        ObColumnSchemaV2 outbox;
+        if (table.get_column_schema("__seekdb_ai_state") != nullptr) { ret = OB_INVALID_ARGUMENT; }
+        else if (OB_FAIL(build_ai_column_outbox(outbox, table.get_table_id(), gen_column_id()))) {}
+        else if (OB_FAIL(table.add_column(outbox))) {}
+        else { table.set_max_used_column_id(outbox.get_column_id()); }
+      }
+    }
   }
   return ret;
 }
@@ -695,7 +707,7 @@ int ObCreateTableResolver::resolve_table_elements(const ParseNode *node,
                                                 table_schema,
                                                 false,
                                                 is_create_table_as))) {
-          } else if (OB_FAIL(check_default_value(column.get_cur_default_value(),
+          } else if (!column.is_ai_column() && OB_FAIL(check_default_value(column.get_cur_default_value(),
                                           session_info_->get_tz_info_wrap(),
                                           NULL,
                                           *allocator_,

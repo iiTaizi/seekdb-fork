@@ -180,6 +180,7 @@ int ObPDMLOpDataDriver::fill_cache_unitl_cache_full_or_child_iter_end(ObExecCont
         //need to skip this row
       } else if (is_heap_table_insert_
           && OB_FAIL(set_heap_table_hidden_pk(row, tablet_id))) {
+      } else if (OB_FAIL(ObDMLService::eval_ai_column_captures(*row, *eval_ctx_))) {
       } else if (OB_FAIL(cache_.add_row(*row, tablet_id))) {
         if (!with_barrier_ && OB_EXCEED_MEM_LIMIT == ret) {
           // Currently does not support caching the last row of data

@@ -71,6 +71,7 @@ private:
   std::atomic<bool> is_finished_;
   int batch_error_;
   int64_t max_retry_times_;
+  bool single_attempt_ = false;
   int64_t abs_timeout_ts_;
   int64_t timeout_sec_;
   DISALLOW_COPY_AND_ASSIGN(ObAIFuncClient);

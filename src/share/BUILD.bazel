@@ -34,6 +34,20 @@ load(
 
 declare_share_semantic_header_targets()
 
+cc_library(
+    name = "ai_column_state",
+    srcs = ["ai_column/ai_column_definition.cpp", "ai_column/ai_column_state.cpp"],
+    hdrs = ["ai_column/ai_column_definition.h", "ai_column/ai_column_state.h"],
+    deps = [
+        ":error_codes",
+        "//src/oblib:oblib_base",
+        "//src/oblib:oblib_common",
+        "//src/oblib:oblib_foundation",
+    ],
+    features = ["layering_check"],
+    visibility = ["//src:__subpackages__", "//unittest:__subpackages__"],
+)
+
 _VECTOR_UNITY_GROUP = select_unity_sources(
     SHARE_UNITY_GROUPS,
     "vector",
@@ -1589,6 +1603,7 @@ _SHARE_RUNTIME_GENERATED_DEPS = [
 ]
 
 _SHARE_RUNTIME_DEPS = _SHARE_RUNTIME_GENERATED_DEPS + [
+    ":ai_column_state",
     ":cache",
     ":config",
     ":config_parser_interface",
@@ -1783,6 +1798,7 @@ grouped_unity_cc_library(
     ),
     split_unity_groups = True,
     implementation_deps = [
+        ":ai_column_state",
         ":_share_implementation_headers",
         "//rust:config_headers",
     ] + _SHARE_RUNTIME_COMPILE_DEPS + [

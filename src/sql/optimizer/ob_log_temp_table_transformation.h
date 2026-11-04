@@ -29,6 +29,9 @@ class ObLogTempTableTransformation : public ObLogicalOperator
 public:
   ObLogTempTableTransformation(ObLogPlan &plan);
   virtual ~ObLogTempTableTransformation();
+  bool ai_column_strict_read_ = false;
+  const char *get_name() const override
+  { return ai_column_strict_read_ ? "AI COLUMN STRICT READ" : ObLogicalOperator::get_name(); }
   virtual int compute_op_ordering() override;
   virtual bool is_consume_child_1by1() const { return true; }
   virtual int compute_fd_item_set() override;

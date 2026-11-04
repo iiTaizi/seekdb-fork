@@ -39,7 +39,7 @@ DEF_TO_STRING(ObTempTableTransformationOpSpec)
   return pos;
 }
 
-OB_SERIALIZE_MEMBER_INHERIT(ObTempTableTransformationOpSpec, ObOpSpec);
+OB_SERIALIZE_MEMBER_INHERIT(ObTempTableTransformationOpSpec, ObOpSpec, ai_column_strict_read_);
 
 int ObTempTableTransformationOp::inner_rescan()
 {
@@ -49,9 +49,77 @@ int ObTempTableTransformationOp::inner_rescan()
   return ret;
 }
 
+OperatorOpenOrder ObTempTableTransformationOp::get_operator_open_order() const
+{
+  return static_cast<const ObTempTableTransformationOpSpec &>(spec_).ai_column_strict_read_
+      ? OPEN_SELF_ONLY : OPEN_CHILDREN_FIRST;
+}
+
+int ObTempTableTransformationOp::drain_ai_controls()
+{
+  int ret = OB_SUCCESS;
+  for (int64_t i=0; OB_SUCC(ret) && i<get_child_cnt()-1; ++i) {
+    ObOperator *control = children_[i];
+    if (control == nullptr) { ret = OB_ERR_UNEXPECTED; }
+    else if (control->get_spec().is_vectorized()) {
+      bool end = false;
+      while (OB_SUCC(ret) && !end) {
+        const ObBatchRows *rows = nullptr;
+        if (OB_FAIL(check_status())) {}
+        else if (OB_FAIL(control->get_next_batch(256, rows))) {}
+        else if (rows == nullptr) { ret = OB_ERR_UNEXPECTED; }
+        else {
+          // Force outputs even if a future child uses lazy projection.
+          for (int64_t j=0; OB_SUCC(ret) && rows->size_>0 && j<control->get_spec().output_.count(); ++j) {
+            ret = control->get_spec().output_.at(j)->eval_batch(control->get_eval_ctx(), *rows->skip_, rows->size_);
+          }
+          end = rows->end_;
+        }
+      }
+    } else {
+      while (OB_SUCC(ret)) {
+        if (OB_FAIL(check_status())) {}
+        else if (OB_FAIL(control->get_next_row())) {}
+        else {
+          for (int64_t j=0; OB_SUCC(ret) && j<control->get_spec().output_.count(); ++j) {
+            ObDatum *value = nullptr;
+            ret = control->get_spec().output_.at(j)->eval(control->get_eval_ctx(), value);
+          }
+        }
+      }
+      if (ret == OB_ITER_END) { ret = OB_SUCCESS; }
+    }
+  }
+  return ret;
+}
+
 int ObTempTableTransformationOp::inner_open()
 {
   int ret = OB_SUCCESS;
+  if (static_cast<const ObTempTableTransformationOpSpec &>(spec_).ai_column_strict_read_) {
+    init_temp_table_ = false;
+    if (get_child_cnt()<2) { ret = OB_ERR_UNEXPECTED; }
+    for (int64_t i=0; OB_SUCC(ret) && i<get_child_cnt()-1; ++i) {
+      ai_opened_children_ = i+1; ret = children_[i]->open();
+    }
+    if (OB_SUCC(ret)) { ret = drain_ai_controls(); }
+    if (OB_SUCC(ret)) {
+      ai_opened_children_ = get_child_cnt(); ret = children_[get_child_cnt()-1]->open();
+    }
+  }
+  return ret;
+}
+
+int ObTempTableTransformationOp::rescan()
+{
+  if (!static_cast<const ObTempTableTransformationOpSpec &>(spec_).ai_column_strict_read_) {
+    return ObOperator::rescan();
+  }
+  int ret = OB_SUCCESS;
+  for (int64_t i=0; OB_SUCC(ret) && i<get_child_cnt()-1; ++i) { ret = children_[i]->rescan(); }
+  if (OB_SUCC(ret)) { ret = drain_ai_controls(); }
+  if (OB_SUCC(ret)) { ret = children_[get_child_cnt()-1]->rescan(); }
+  if (OB_SUCC(ret)) { ret = ObOperator::inner_rescan(); }
   return ret;
 }
 
@@ -111,14 +179,20 @@ int ObTempTableTransformationOp::inner_get_next_batch(const int64_t max_row_cnt)
                  max_row_cnt, child_brs))) {
   } else { /*do nothing.*/
   }
-  (void)brs_.copy(child_brs);
+  if (OB_SUCC(ret) && child_brs != nullptr) { (void)brs_.copy(child_brs); }
   return ret;
 }
 
 int ObTempTableTransformationOp::inner_close()
 {
   int ret = OB_SUCCESS;
-  if (OB_FAIL(destory_interm_results())) {
+  if (static_cast<const ObTempTableTransformationOpSpec &>(spec_).ai_column_strict_read_) {
+    for (int64_t i=ai_opened_children_-1; i>=0; --i) {
+      const int code = children_[i]->close();
+      if (OB_SUCC(ret) && code!=OB_SUCCESS) { ret = code; }
+    }
+    ai_opened_children_ = 0;
+  } else if (OB_FAIL(destory_interm_results())) {
   }
   return ret;
 }

@@ -1966,6 +1966,9 @@ int ObDDLResolver::resolve_column_definition(ObColumnSchemaV2 &column,
       }
     }
   }
+  if (OB_SUCC(ret) && node->num_child_ == AI_COLUMN_DEFINITION_NUM_CHILD) {
+    ret = resolve_ai_column_syntax(column, *node);
+  }
   return ret;
 }
 
@@ -3716,6 +3719,8 @@ int ObDDLResolver::check_default_value(ObObj &default_value,
   const ObObj input_default_value = default_value;
   if (OB_ISNULL(session_info)) {
     ret = OB_ERR_UNEXPECTED;
+  } else if (column.is_ai_column()) {
+    ret = resolve_ai_column_expression(allocator, table_schema, resolved_cols, column, session_info, schema_checker);
   } else if (column.is_generated_column()) {
     ObString expr_str;
     ObRawExpr *expr = NULL;

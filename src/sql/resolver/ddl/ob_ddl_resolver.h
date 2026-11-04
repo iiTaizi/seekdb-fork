@@ -59,7 +59,8 @@ enum NUMCHILD {
   COLUMN_DEFINITION_NUM_CHILD = 4,
   COLUMN_DEF_NUM_CHILD = 3,
   INDEX_NUM_CHILD = 5,
-  GEN_COLUMN_DEFINITION_NUM_CHILD = 7
+  GEN_COLUMN_DEFINITION_NUM_CHILD = 7,
+  AI_COLUMN_DEFINITION_NUM_CHILD = 6
 };
 
 struct ObColumnResolveStat
@@ -518,6 +519,14 @@ protected:
       const bool unused_flag = false,
       const bool is_create_table_as = false,
       const bool allow_has_default = true);
+  int resolve_ai_column_syntax(share::schema::ObColumnSchemaV2 &column, const ParseNode &node);
+  static int resolve_ai_column_expression(common::ObIAllocator &allocator,
+      share::schema::ObTableSchema &table_schema,
+      common::ObIArray<share::schema::ObColumnSchemaV2 *> &resolved_columns,
+      share::schema::ObColumnSchemaV2 &column, ObSQLSessionInfo *session,
+      ObSchemaChecker *schema_checker);
+  int resolve_ai_columns(share::schema::ObTableSchema &table_schema, bool &has_ai_columns);
+  static int build_ai_column_outbox(share::schema::ObColumnSchemaV2 &column, uint64_t table_id, uint64_t column_id);
   int drop_not_null_constraint(const share::schema::ObColumnSchemaV2 &column);
   int resolve_normal_column_attribute_constr_not_null(ObColumnSchemaV2 &column,
                                                       ParseNode *attrs_node,

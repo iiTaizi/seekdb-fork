@@ -2084,6 +2084,15 @@ public:
   // extra accesstors begin
   void set_cast_mode(const uint64_t val) { extra_.cast_mode_ = val; }
   void set_autoinc_nextval_extra(const uint64_t val) { extra_.autoinc_nextval_extra_ = val; }
+  void set_ai_column_capture_marker() { extra_.value_ = 1; }
+  bool has_ai_column_capture_marker() const
+  { return type_ == T_FUN_SYS_AI_COLUMN_CAPTURE && extra_.value_ == 1; }
+  void set_ai_column_status_marker() { extra_.value_ = 1; }
+  void set_ai_column_strict_marker() { extra_.value_ = 2; }
+  bool has_ai_column_strict_marker() const
+  { return type_ == T_FUN_SYS_AI_COLUMN_STATUS && extra_.value_ == 2; }
+  bool has_ai_column_status_marker() const
+  { return type_ == T_FUN_SYS_AI_COLUMN_STATUS && extra_.value_ == 1; }
   void set_res_cs_type(const uint64_t val) { extra_.res_cs_type_ = val; }
   void set_json_partial_update_flag(const uint64_t val) { extra_.json_partial_update_flag_ = val; }
   void set_from_unixtime_flag(const uint64_t val) { extra_.from_unixtime_flag_ = val; }

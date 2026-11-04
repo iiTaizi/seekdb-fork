@@ -18,6 +18,7 @@
 #include "observer/virtual_table/ob_table_columns.h"
 #include "observer/ob_server_runtime_access.h"
 #include "sql/resolver/ddl/ob_create_view_resolver.h"
+#include "share/ai_column/ai_column_definition.h"
 using namespace oceanbase::common;
 using namespace oceanbase::share;
 using namespace oceanbase::share::schema;
@@ -518,7 +519,11 @@ int ObTableColumns::fill_row_cells(const ObTableSchema &table_schema,
       }
     case EXTRA: {
         ObString extra_val;
-        if (column_schema.is_autoincrement()) {
+        if (column_schema.is_ai_column()) {
+          share::AiColumnDefinition definition;
+          if (OB_FAIL(definition.decode(*allocator_, column_schema.get_ai_column_info()))) {}
+          else { ret = definition.format_clause(*allocator_, extra_val); }
+        } else if (column_schema.is_autoincrement()) {
           extra_val = ObString::make_string("auto_increment");
         } else if (column_schema.is_on_update_current_timestamp()) {
           int16_t scale = column_schema.get_data_scale();

@@ -513,11 +513,24 @@ int ObDelUpdResolver::resolve_additional_assignments(ObIArray<ObTableAssignment>
       LOG_WARN("fail to get table schema", KPC(table_item), K(table_schema));
     } else if (OB_FAIL(table_schema->has_before_update_row_trigger(*schema_guard, trigger_exist))) {
     } else if (OB_FAIL(generate_wrapper_expr_for_assignemnts(assigns.at(i).assignments_, trigger_exist))) {
-    } else if (OB_FAIL(check_update_vector_col_with_vector_index(table_schema,
-                                                                 schema_guard,
-                                                                 assigns.at(i).assignments_,
-                                                                 update_with_vector_index))) {
     } else {
+      bool has_ai_columns=false;
+      for (auto it=table_schema->column_begin(); it!=table_schema->column_end(); ++it) {
+        has_ai_columns |= (*it)->is_ai_column();
+      }
+      if (!has_ai_columns) {
+        ret=check_update_vector_col_with_vector_index(table_schema,schema_guard,
+            assigns.at(i).assignments_,update_with_vector_index);
+      }
+      // Resolve ordinary implicit values before taking the AI input snapshot.
+      // Generated helpers must see the resulting AI invalidation assignments.
+      // Tables without AI columns retain their original assignment order.
+      for (int phase=0; OB_SUCC(ret) && phase<(has_ai_columns ? 2 : 1); ++phase) {
+        if (phase==1) {
+          if (OB_FAIL(build_ai_column_update_capture(assigns.at(i)))) {}
+          else { ret=check_update_vector_col_with_vector_index(table_schema,schema_guard,
+              assigns.at(i).assignments_,update_with_vector_index); }
+        }
       for (ObTableSchema::const_column_iterator iter = table_schema->column_begin();
           (OB_SUCCESS == ret && iter != table_schema->column_end()); ++iter) {
         ColumnItem *col_item = NULL;
@@ -527,6 +540,10 @@ int ObDelUpdResolver::resolve_additional_assignments(ObIArray<ObTableAssignment>
         if (NULL == column_schema) {
           ret = OB_ERR_UNEXPECTED;
           LOG_WARN("get column schema fail", K(column_schema));
+        } else if (has_ai_columns && (phase==1) != (column_schema->is_generated_column()
+                                   || column_schema->is_vec_hnsw_vid_column()
+                                   || column_schema->is_vec_ivf_center_id_column())) {
+          continue;
         } else if (FALSE_IT(column_id = column_schema->get_column_id())) {
           //do nothing
         } else if (OB_FAIL(check_need_assignment(assigns.at(i).assignments_,
@@ -598,7 +615,8 @@ int ObDelUpdResolver::resolve_additional_assignments(ObIArray<ObTableAssignment>
             }
           }
         }
-      }  // end for
+      }  // end columns
+      }  // end assignment phases
     }
     // For INSERT ON DUPLICATE KEY UPDATE, if table has vector index column and is heap table,
     // call build_hidden_pk_assignment regardless of whether UPDATE clause contains vector index column

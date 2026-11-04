@@ -37,6 +37,7 @@ load(
 package(default_visibility = ["//visibility:private"])
 
 _SQL_RUNTIME_ONLY_SHARE_DEPS = [
+    "//src/share:ai_column_state",
     "//src/share:checksum_persistence",
     "//src/share:cluster_metadata_persistence",
     "//src/share:cluster_topology",
@@ -234,6 +235,7 @@ _SQL_RUNTIME_WITHOUT_PASS_UNITY_GROUPS = singleton_unity_groups(
 )
 
 _SQL_RUNTIME_IMPLEMENTATION_DEPS = [
+    "//src/share:ai_column_state",
     "//rust:config_headers",
     ":_textual_sql_map_inputs",
     ":sql_runtime_interface",
@@ -434,4 +436,19 @@ cc_library(
     ],
     tags = ["manual"],
     visibility = ["//src/observer:__pkg__"],
+)
+
+# Header-only native worker seam; implementations stay in sql_objects.
+cc_library(
+    name = "sql_ai_column_interface",
+    hdrs = [
+        "engine/ai_column/ai_column_sql.h",
+        "engine/ai_column/ai_column_model_evaluator.h",
+    ],
+    deps = [
+        ":sql_runtime_interface",
+        "//src/share:ai_column_state",
+    ],
+    tags = ["manual"],
+    visibility = ["//src/observer:__pkg__", "//src/rootserver:__pkg__"],
 )

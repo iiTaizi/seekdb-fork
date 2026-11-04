@@ -235,6 +235,26 @@ int ObAlterTableResolver::resolve(const ParseNode &parse_tree)
         ret = OB_ERR_UNEXPECTED;
       }
     }
+    if (OB_SUCC(ret) && table_schema_ != nullptr) {
+      AlterTableSchema &changes = alter_table_stmt->get_alter_table_arg().alter_table_schema_;
+      bool ai_change = false;
+      for (auto it = changes.column_begin(); it != changes.column_end(); ++it) {
+        ai_change |= *it != nullptr && (*it)->is_ai_column();
+      }
+      if (ai_change) {
+        const ObColumnSchemaV2 *old = table_schema_->get_column_schema("__seekdb_ai_state");
+        if (old != nullptr && !old->is_ai_column_outbox()) { ret = OB_INVALID_ARGUMENT; }
+        else if (old == nullptr) {
+          AlterColumnSchema outbox;
+          if (OB_FAIL(build_ai_column_outbox(outbox, table_schema_->get_table_id(), OB_INVALID_ID))) {}
+          else {
+            outbox.alter_type_ = OB_DDL_ADD_COLUMN;
+            if (OB_FAIL(alter_table_stmt->add_column(outbox))) {}
+            else { alter_table_stmt->set_sql_mode(session_info_->get_sql_mode()); }
+          }
+        }
+      }
+    }
   }
   DEBUG_SYNC(HANG_BEFORE_RESOLVER_FINISH);
   return ret;

@@ -440,7 +440,8 @@ int ObRawExprInfoExtractor::visit(ObSysFunRawExpr &expr)
       if (OB_FAIL(expr.add_flag(IS_RAND_FUNC))) {
       }
     } else if (T_FUN_SYS_GUID == expr.get_expr_type() || T_FUN_SYS_UUID == expr.get_expr_type() 
-              || T_FUN_SYS_UUID_SHORT == expr.get_expr_type()) {
+              || T_FUN_SYS_UUID_SHORT == expr.get_expr_type()
+              || T_FUN_SYS_AI_COLUMN_CAPTURE == expr.get_expr_type()) {
       if (OB_FAIL(expr.add_flag(IS_RAND_FUNC))) {
       }
     } else if (T_FUN_SYS_REMOVE_CONST == expr.get_expr_type()) {

@@ -10975,5 +10975,18 @@
     "info_cn": "",
     "background_cn": "",
     "ref_url": ""
-  }
+  },
+  "ai_column_strict_read": {
+    "id": 10755,
+    "name": "ai_column_strict_read",
+    "default_value": "0",
+    "base_value": "0",
+    "data_type": "bool",
+    "info": "Require referenced AI columns to be READY on the statement snapshot before execution",
+    "flags": "SESSION | NEED_SERIALIZE | INFLUENCE_PLAN | MYSQL_ONLY",
+    "publish_version": "1.0.0.0",
+    "info_cn": "严格检查引用的AI列整列就绪状态",
+    "background_cn": "",
+    "ref_url": ""
+}
 }

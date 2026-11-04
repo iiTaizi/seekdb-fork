@@ -1530,6 +1530,7 @@ SQL_STANDALONE_SOURCES = [
 ]
 
 SQL_EXTRA_SOURCES = [
+    "src/sql/resolver/ddl/ob_ai_column_resolver.cpp",
     "src/sql/engine/expr/ob_datum_cast.cpp",
     "src/sql/engine/expr/ob_obj_cast_runtime.cpp",
     "src/sql/engine/expr/ob_expr_cmp_func.cpp",
@@ -1551,6 +1552,13 @@ SQL_EXTRA_SOURCES = [
     "src/sql/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_5.cpp",
     "src/sql/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_6.cpp",
     "src/sql/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_7.cpp",
+    "src/sql/engine/ai_column/ai_column_capture_expr.cpp",
+    "src/sql/resolver/dml/ai_column_dml_resolver.cpp",
+    "src/sql/engine/ai_column/ai_column_status_expr.cpp",
+    "src/sql/engine/ai_column/ai_column_sql.cpp",
+    "src/sql/engine/ai_column/ai_column_model_evaluator.cpp",
+    "src/sql/resolver/dml/ai_column_retry_resolver.cpp",
+    "src/sql/engine/ai_column/ai_column_strict_read.cpp",
 ]
 
 SQL_PARSER_SOURCES = [

@@ -594,6 +594,7 @@ public:
 
   void reset()
   {
+    ai_column_read_controls_.reset();
     question_marks_count_ = 0;
     calculable_items_.reset();
     fetch_cur_time_ = true;
@@ -738,6 +739,8 @@ public:
       int8_t type_demotion_flag_reserved_   : 4;
     };
   };
+  // Resolved before rewrites; these unfiltered controls share the final physical plan.
+  common::ObSEArray<ObSelectStmt *, 4> ai_column_read_controls_;
   bool has_hybrid_search_;
 };
 

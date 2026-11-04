@@ -56,6 +56,9 @@ public:
   inline bool is_resolve_insert_update() { return is_resolve_insert_update_;}
 protected:
 
+  int build_ai_column_insert_capture(ObInsertTableInfo &table_info);
+  int build_ai_column_update_capture(ObTableAssignment &assignments);
+
   int resolve_assignments(const ParseNode &parse_node,
                           common::ObIArray<ObTableAssignment> &table_assigns,
                           ObStmtScope scope);

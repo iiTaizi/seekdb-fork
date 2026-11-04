@@ -42,6 +42,7 @@
 #include "sql/optimizer/ob_log_temp_table_access.h"
 #include "sql/optimizer/ob_log_temp_table_insert.h"
 #include "sql/optimizer/ob_log_temp_table_transformation.h"
+#include "sql/engine/basic/ob_temp_table_transformation_op.h"
 #include "sql/optimizer/ob_log_stat_collector.h"
 #include "sql/optimizer/ob_log_expand.h"
 #include "sql/engine/ob_operator_factory.h"
@@ -3188,7 +3189,7 @@ int ObStaticEngineCG::generate_spec(ObLogTempTableInsert &op, ObTempTableInsertO
 int ObStaticEngineCG::generate_spec(ObLogTempTableTransformation &op, ObTempTableTransformationOpSpec &spec, const bool)
 {
   int ret = OB_SUCCESS;
-  UNUSED(spec);
+  spec.ai_column_strict_read_ = op.ai_column_strict_read_;
   ObSEArray<ObExpr*, 4> output_exprs;
   if (OB_FAIL(generate_rt_exprs(op.get_output_exprs(), output_exprs))) {
   } else { /*do nothing.*/ }

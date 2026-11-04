@@ -439,6 +439,7 @@ grouped_unity_cc_library(
         "//src/share:vector",
         "//src/share:worker_runtime",
         "//src/sql:sql_runtime_interface",
+        "//src/sql:sql_ai_column_interface",
         "//src/storage:_textual_ob_keybtree",
         "//src/storage:storage_runtime_interface",
         ":debug_sync_broadcaster_adapter",

@@ -96,7 +96,8 @@ int ObLogTempTableTransformation::allocate_startup_expr_post()
 {
   int ret = OB_SUCCESS;
   int64_t last_child = get_num_of_child() - 1;
-  if (OB_FAIL(ObLogicalOperator::allocate_startup_expr_post(last_child))) {
+  // A false business predicate must not suppress the unfiltered strict scan.
+  if (!ai_column_strict_read_ && OB_FAIL(ObLogicalOperator::allocate_startup_expr_post(last_child))) {
   }
   return ret;
 }
